@@ -29,9 +29,10 @@ class node():
     def __hash__(self):
         return hash((self.x, self.y))
     
-def find_path(base,target, obstacles = set(), max_nodes = 200, max_cost = 12):
+def find_path(base,target, obstacles = set(), max_nodes = 200, max_cost = 25):
     base.cost = 0
     frontier = [base]
+    base.dist = abs(base.x - target.y) + abs(base.y + target.y)
     expanded = set()
        
     while True:
@@ -61,6 +62,8 @@ def find_path(base,target, obstacles = set(), max_nodes = 200, max_cost = 12):
         x,y = current.x, current.y
         childs = [node(x+1,y, prev = current), node(x-1,y, prev = current),
                   node(x,y+1,prev = current), node(x,y-1, prev = current)]
+        for c in childs:
+            c.dist = abs(c.x - target.x) + abs(c.y + target.y)
         frontier += {c for c in childs if c not in obstacles and c not in expanded and c.cost+c.dist <= max_cost}
 
 def find_movable_squares(current,obstacles = {}, max_cost = 6):
@@ -93,7 +96,7 @@ if __name__ == "__main__":
     target = None
     target = node(2,2)
     base = node(7,7)
-    obstacles = {node(6,16),node(6,17),node(6,18),node(7,16),node(8,16)}
+    obstacles = set()
     i = 0
             
     win_w,win_h = 900, 500

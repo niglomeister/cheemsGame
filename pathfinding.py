@@ -9,11 +9,12 @@ Created on Thu Sep  8 21:51:26 2022
 from collections import namedtuple
 from dataclasses import dataclass
 
+from lib import is_passable
+
 class node():
     dist = None
     prev = None
     cost = None
-    dist = None
     def __init__(self,x,y, prev = None):
         if prev:
             self.cost = prev.cost + 1
@@ -77,11 +78,6 @@ def find_movable_squares(target, grid):
             c.cost = current.cost + 1
             if c.cost <= max_cost and c not in expanded and is_passable(c.x,c.y,target, grid) and c not in frontier:
                 frontier.add(c)
-                
-    return expanded, frontier
+    expanded.remove(node(target.x,target.y))  
+    return expanded
 
-
-def is_passable(x,y,target, grid):
-    if x >= grid.shape[0] or y >= grid.shape[1]:
-        return False
-    return not sum(b.solid for b in grid[x,y])
