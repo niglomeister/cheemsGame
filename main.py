@@ -9,13 +9,16 @@ import pygame as pg
 import os
 import numpy as np
 
-from level import *  
-from stats import *
 from pathfinding import find_path, find_movable_squares
+from stats import *
+from lib import *
+
 pg.init()  
 
+BLACK = (0,0,0)
+win_w, win_h = 900, 500
 win = pg.display.set_mode((win_w,win_h))
-pg.display.set_caption(game_name)
+pg.display.set_caption("cheems battle ultimate")
 font = pg.font.SysFont(pg.font.get_default_font(),24)
 
 def check_move_inputs(target):
@@ -31,31 +34,15 @@ def check_move_inputs(target):
     if event.key == pg.K_s:
         move(target,target.x, target.y + 1)
         
-def has_collision(target,x,y):
-    n_coll = 0
-    for b in grid[x,y]:
-        print(b)
-        if b.solid:
-            n_coll += 1
-        if isinstance(b,directionalDoor):
-            if b.orientation == 'left' and target.x != x +1:
-                n_coll += 1
-            elif b.orientation == 'right' and target.x != x -1:
-                n_coll += 1
-            elif b.orientation == 'top' and target.y != y +1:
-                n_coll += 1
-            elif b.orientation == 'bot' and target.y != y -1:
-                n_coll += 1 
-    return bool(n_coll)
             
-def move(target, x,y, grid):
-    if x in range(grid_w) and y in range(grid_h) and target.pm > 0 and not has_collision(target, x, y) :
+def move(target, x,y):
+    if x in range(grid.w) and y in range(grid.h) and target.pm > 0 and not has_collision(target, x, y) :
         target.pm -= 1
         grid[target.x,target.y].remove(target)
         
         target.x, target.y = x,y 
         grid[target.x,target.y].append(target)
-    return find_movable_squares(target, grid)
+    return find_movable_squares(target)
 
 
 def dmg_calc(player,target):  
@@ -78,20 +65,20 @@ def in_range(player, target):
 
 #============ drawing stuff =============
 def draw_grid():
-    for i in range(grid_w):
-        pg.draw.line(win,BLACK,(i*tile_w,0),(i*tile_w, win_h))
-    for i in range(grid_h):
-        pg.draw.line(win, BLACK, (0,i*tile_h),(win_w,i*tile_h))
+    for i in range(grid.w):
+        pg.draw.line(win,BLACK,(i*grid.tile_w,0),(i*grid.tile_w, win_h))
+    for i in range(grid.h):
+        pg.draw.line(win, BLACK, (0,i*grid.tile_h),(win_w,i*grid.tile_h))
 
 def draw_movable_squares(movable_squares):
     for s in movable_squares:
-        pg.draw.rect(win,(0,0,255),pg.Rect(s.x * tile_w, s.y * tile_h, tile_w - 20,tile_h - 20))
+        pg.draw.rect(win,(0,0,255),pg.Rect(s.x * grid.tile_w, s.y * grid.tile_h, grid.tile_w - 20,grid.tile_h - 20))
     
 def draw_hud(x,y):
     
     #draw the square around the selected fighter
     if player: 
-        pg.draw.rect(win,(0,0,255),pg.Rect(player.rect.x, player.rect.y, tile_w,tile_h),3)
+        pg.draw.rect(win,(0,0,255),pg.Rect(player.rect.x, player.rect.y, grid.tile_w,grid.tile_h),3)
     
     #draw turn informations
     win.blit(font.render(f"Team {playing_team} playing",True,BLACK),(win_w - 130, 20))
@@ -104,7 +91,7 @@ def draw_hud(x,y):
 
 def draw_blocks(blocks):
     for block in blocks:
-        block.rect.x, block.rect.y = block.x * tile_w, block.y * tile_h
+        block.rect.x, block.rect.y = block.x * grid.tile_w, block.y * grid.tile_h
         win.blit(block.img, block.rect)
 
 def is_passable():
@@ -114,10 +101,35 @@ i = 0
 fps = 60
 clock = pg.time.Clock()
 running = True
+
+""" ============ LEVEL =========== """
+grid_w, grid_h = 18, 10
+#terrain setup
+blocks += [block('wall.jpg',x=10,y=i, solid = True) for i in range(5) if i != 3]
+blocks += [block('wall.jpg',x=i,y=5, solid = True) for i in range(5,11) if i != 8]
+blocks.append(directionalDoor('door.png',x=8,y=5, orientation = 'bot'))
+blocks.append(directionalDoor('door.png',x=10,y=3,orientation = 'right'))
+
+#fighters setup
+n_teams = 2
+team1 = [fighter('cheems_batte.png', 4,4 , cheems_stats, [pitchfork()]),
+         scout('cheems_scout.png', 8,4 ,stats = cheems_stats, items = [pitchfork()]),
+         fighter("dogeatthan.png",5,2, dogeatthan_stats, [comet()])]
+
+team2 = [fighter('choge.jpg',15,2, choge_stats, [bareFist()],team = 2), 
+         fighter("dogion.png",13,4, dogion_stats, [maw()], team = 2),
+         fighter("dogion.png",17,5, dogion_stats, [maw()], team = 2)]
+
+teams = [team1, team2]
+fighters += team1 + team2
+blocks += fighters
+
+grid = Grid(grid_w, grid_h,win_w,win_h )
+
 while running:
     clock.tick(fps)  
     mouse_pos = pg.mouse.get_pos()
-    mouse_x, mouse_y = mouse_pos[0] // tile_w, mouse_pos[1] // tile_h
+    mouse_x, mouse_y = mouse_pos[0] // grid.tile_w, mouse_pos[1] // grid.tile_h
     
     for event in pg.event.get():
         
@@ -139,13 +151,13 @@ while running:
             #check move inputs
             if player:
                 if event.key == pg.K_d:
-                    movable_squares = move(player,player.x+1, player.y, grid)
+                    movable_squares = move(player,player.x+1, player.y)
                 if event.key == pg.K_q:
-                    movable_squares = move(player,player.x -1, player.y, grid)      
+                    movable_squares = move(player,player.x -1, player.y)      
                 if event.key == pg.K_z:
-                    movable_squares = move(player,player.x, player.y -1, grid)
+                    movable_squares = move(player,player.x, player.y -1)
                 if event.key == pg.K_s:
-                    movable_squares = move(player,player.x, player.y + 1, grid)
+                    movable_squares = move(player,player.x, player.y + 1)
                     
         #mouse          
         if event.type == pg.MOUSEBUTTONUP:
@@ -165,7 +177,7 @@ while running:
                     if in_range(player,target):
                         attack(player,target)
                 else:   
-                    movable_squares = find_movable_squares(target, grid)
+                    movable_squares = find_movable_squares(target)
                         
             #unselect current player
             else: 
@@ -173,7 +185,7 @@ while running:
                 movable_squares = []
     
     #draw window ..
-    win.fill(WHITE)
+    win.fill((255,255,255))
     draw_blocks(blocks)
     draw_movable_squares(movable_squares)
     draw_grid()
